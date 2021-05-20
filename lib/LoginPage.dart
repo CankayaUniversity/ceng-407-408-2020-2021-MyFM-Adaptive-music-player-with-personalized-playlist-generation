@@ -88,14 +88,14 @@ class AuthenticationWrapper extends StatelessWidget {
     final firebaseUser = context.watch<User>();
     if(firebaseUser!=null)
       return FutureBuilder(
-        future: d.findCustomer(firebaseUser.email),
+        future: d.findCustomer(firebaseUser.email.trim()),
         builder: (BuildContext context, AsyncSnapshot<dynamic> snapshot) {
           if(snapshot.hasData){
-            Customer prevCustomer = snapshot.data;
-            return WelcomeSend(prevCustomer, null);
+            return WelcomeSend(snapshot.data, null);
           }
-          else
+          else {
             return CircularProgressIndicator(backgroundColor: color,);
+          }
         },
       );
     else
