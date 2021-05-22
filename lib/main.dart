@@ -194,9 +194,7 @@ class Welcome extends State<WelcomeSend> {
     super.initState();
   }
   Future<List<Song>> iterateSongs(int page) async {
-    print(page);
     songs = new List<Song>.empty(growable: true);
-    print("Bef:");
     nSongs = new List<Song>.empty(growable: true);
     await FirebaseFirestore.instance.collection("Songs").get().then((value) {
       value.docs.forEach((result) {
@@ -210,7 +208,6 @@ class Welcome extends State<WelcomeSend> {
       });
     });
     songs.sort((a, b) => a.id.compareTo(b.id));
-    print("S: " + songs.toString());
     if(page == 0 || page == null){
       if (searched.text != "") {
         bool notFound = false;
@@ -358,7 +355,6 @@ class Welcome extends State<WelcomeSend> {
             otherLiked = values[idx].toString().split('_');
         }
         if (!skip) {
-          print(result.data().toString() + " - " + otherLiked.toString());
           int equal = 0;
           bool copyOther = false;
           for (int i = 0; i < thisLiked.length; i++) {
@@ -485,8 +481,6 @@ class Welcome extends State<WelcomeSend> {
                     cnt++;
                     if (find == currentPlaylist) break;
                   }
-                  print(cnt.toString());
-                  print(playLists.toString());
                   List<String> tmpPlayLists = new List.empty(growable: true);
                   this.customer.playlists = "";
                   playlistNames = new List<String>.empty(growable: true);
