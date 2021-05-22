@@ -55,11 +55,14 @@ class Register extends StatelessWidget {
                 );
                 if(result == "Signed up") {
                   Customer newCustomer = new Customer(
-                      name: this.name.text == null ? "" : this.name.text,
-                      email: this.email.text,
-                      password: this.password.text,
+                    name: this.name.text == null ? "" : this.name.text,
+                    email: this.email.text,
+                    password: this.password.text,
+                    playlists: "",
+                    history: "",
+                    liked: "",
+                    lastListened: "",
                   );
-                  print("To " + newCustomer.toString());
                   d.createCustomer(newCustomer);
                   Navigator.of(context).push(MaterialPageRoute(builder: (context) => WelcomeSend(newCustomer, null)));
                 }

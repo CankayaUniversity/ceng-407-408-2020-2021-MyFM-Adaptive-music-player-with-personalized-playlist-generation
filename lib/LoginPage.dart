@@ -49,6 +49,7 @@ class Login extends StatelessWidget {
                   );
                   if(result == "Signed in") {
                     Customer customerLog = await d.findCustomer(email.text);
+                    page = 0;
                     Navigator.of(context).push(MaterialPageRoute(builder: (context) => WelcomeSend(customerLog, null)));
                   }
                   else
