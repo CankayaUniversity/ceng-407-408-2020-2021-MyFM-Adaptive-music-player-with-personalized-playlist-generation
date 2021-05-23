@@ -1,8 +1,5 @@
 import 'dart:async';
 import 'dart:collection';
-
-//import 'dart:html';
-//import 'dart:html';
 import 'dart:io';
 import 'dart:isolate';
 import 'dart:math';
@@ -20,7 +17,6 @@ import 'LoginPage.dart';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter_downloader/flutter_downloader.dart';
 import 'package:permission_handler/permission_handler.dart';
-
 //import 'package:connectivity/connectivity.dart';
 import 'package:flutter/services.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -47,7 +43,7 @@ bool connected = true,
     loopToggle = false,
     playListChange = true,
     shuffleToggle = false,
-    otherWait = true;
+    songsLoaded = false;
 List<String> playLists = new List<String>.empty(growable: true);
 List<String> playlistNames = new List<String>.empty(growable: true);
 final AudioPlayer ap = new AudioPlayer();
@@ -187,26 +183,23 @@ class Welcome extends State<WelcomeSend> {
   List<String> songNames;
   MusicSend ms;
   String currentPlaylist;
-  Future futureSongs;
-  @override
-  void initState() {
-    futureSongs = iterateSongs(page);
-    super.initState();
-  }
   Future<List<Song>> iterateSongs(int page) async {
-    songs = new List<Song>.empty(growable: true);
     nSongs = new List<Song>.empty(growable: true);
-    await FirebaseFirestore.instance.collection("Songs").get().then((value) {
-      value.docs.forEach((result) {
-        songs.add(new Song(
-            id: result['id'],
-            name: result['name'].toString(),
-            artist: result['artist'].toString(),
-            urlSong: result['urlMusic'].toString(),
-            urlPic: result['urlPicture'].toString(),
-            category: result['category'].toString()));
+    if(!songsLoaded){
+      songs = new List<Song>.empty(growable: true);
+      await FirebaseFirestore.instance.collection("Songs").get().then((value) {
+        value.docs.forEach((result) {
+          songs.add(new Song(
+              id: result['id'],
+              name: result['name'].toString(),
+              artist: result['artist'].toString(),
+              urlSong: result['urlMusic'].toString(),
+              urlPic: result['urlPicture'].toString(),
+              category: result['category'].toString()));
+        });
       });
-    });
+      songsLoaded = true;
+    }
     songs.sort((a, b) => a.id.compareTo(b.id));
     if(page == 0 || page == null){
       if (searched.text != "") {
@@ -280,7 +273,6 @@ class Welcome extends State<WelcomeSend> {
     }
     else if(page == 4){
       if (this.customer.liked != null) {
-        print("Mine " + this.customer.liked);
         if ((nSongs = await iterateCustomers()).length < 1){
           List<String> mixSongs = customer.liked.split("_");
           SplayTreeMap catFreq = new SplayTreeMap();
@@ -616,9 +608,7 @@ class Welcome extends State<WelcomeSend> {
                   ),
                   onTap: () {
                     page = 4;
-                    Navigator.of(context).push(MaterialPageRoute(
-                        builder: (context) =>
-                            WelcomeSend(this.customer, this.song)));
+                    Navigator.of(context).push(MaterialPageRoute(builder: (context) => WelcomeSend(this.customer, this.song)));
                   },
                 ),
                 ListTile(
@@ -717,7 +707,7 @@ class Welcome extends State<WelcomeSend> {
           ),
         ),
         body: FutureBuilder(
-          future: futureSongs,
+          future: iterateSongs(page),
           builder: (BuildContext context, AsyncSnapshot<dynamic> snapshot) {
             if(!snapshot.hasData)
               return Center(
