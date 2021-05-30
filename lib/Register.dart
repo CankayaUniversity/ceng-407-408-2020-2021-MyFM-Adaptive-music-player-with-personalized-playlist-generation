@@ -1,5 +1,6 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_phoenix/flutter_phoenix.dart';
 import 'package:provider/provider.dart';
 import 'AuthenticationServices.dart';
 import 'Customer.dart';
@@ -49,10 +50,12 @@ class Register extends StatelessWidget {
                   ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Please enter all fields.")));
                   return;
                 }
+                print("CAME " + email.text +", " + password.text);
                 String result = await context.read<AuthenticationServices>().signUp(
                   email: email.text.trim(),
                   password: password.text.trim(),
                 );
+                print("RES:  " + result);
                 if(result == "Signed up") {
                   Customer newCustomer = new Customer(
                     name: this.name.text == null ? "" : this.name.text,
@@ -64,10 +67,14 @@ class Register extends StatelessWidget {
                     lastListened: "",
                   );
                   d.createCustomer(newCustomer);
+                  playlistNames = new List<String>.empty(growable: true);
+                  playListChange = true;
+                  page = 0;
                   Navigator.of(context).push(MaterialPageRoute(builder: (context) => WelcomeSend(newCustomer, null)));
+                  Phoenix.rebirth(context);
                 }
                 else
-                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Please enter fields correctly.")));
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(result)));
               },
                 child: new Text("Register"),
               ),

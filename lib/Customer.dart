@@ -36,11 +36,9 @@ class Dbs {
       }
     }
     void createCustomer(Customer customer) async{
-      await Firebase.initializeApp();
       FirebaseFirestore.instance.collection('Customers').doc(customer.email).set({'email': customer.email, 'password': customer.password, 'name': customer.name, 'lastListened': customer.lastListened, 'liked': customer.liked, 'history': customer.history, 'playlists': customer.playlists});
     }
     void initialize() async {
-      WidgetsFlutterBinding.ensureInitialized();
       //loadSongs();
     }
     Future<Customer> findCustomer(String email) async{
@@ -60,6 +58,9 @@ class Dbs {
     }
     void updateCustomerPlaylist(Customer customer, String playlists) async {
       FirebaseFirestore.instance.collection("Customers").doc(customer.email).update({'playlists': playlists});
+    }
+    void updateCustomerName(Customer customer, String name) async {
+      FirebaseFirestore.instance.collection("Customers").doc(customer.email).update({'name': name});
     }
     Future<void> deleteCustomer(Customer customer) async {
       FirebaseFirestore.instance.collection("Customers").doc(customer.email).delete();

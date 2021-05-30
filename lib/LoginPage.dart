@@ -50,6 +50,8 @@ class Login extends StatelessWidget {
                   if(result == "Signed in") {
                     Customer customerLog = await d.findCustomer(email.text);
                     page = 0;
+                    playlistNames = new List<String>.empty(growable: true);
+                    playListChange = true;
                     Navigator.of(context).push(MaterialPageRoute(builder: (context) => WelcomeSend(customerLog, null)));
                   }
                   else
@@ -59,13 +61,10 @@ class Login extends StatelessWidget {
                   ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Please enter all fields.")));
               },
                 child: Text("Login"),),
-            ),Container(
-              width: 200,height: 20,
-              child: ElevatedButton(style: ElevatedButton.styleFrom(primary: Colors.black),onPressed: () async {
-                Navigator.of(context).push(MaterialPageRoute(builder: (context) => ForgotPassword()));
-              },
-                child: Text("Forgot My Password"),),
-            ),
+            ),ElevatedButton(style: ElevatedButton.styleFrom(primary: color),onPressed: () async {
+              Navigator.of(context).push(MaterialPageRoute(builder: (context) => ForgotPassword()));
+            },
+              child: Text("Forgot My Password"),),
           ],
         ),
       ),

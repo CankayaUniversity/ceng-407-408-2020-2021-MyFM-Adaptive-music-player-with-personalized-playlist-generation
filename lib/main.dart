@@ -8,6 +8,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_phoenix/flutter_phoenix.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:path/path.dart';
@@ -17,11 +18,8 @@ import 'LoginPage.dart';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter_downloader/flutter_downloader.dart';
 import 'package:permission_handler/permission_handler.dart';
-//import 'package:connectivity/connectivity.dart';
 import 'package:flutter/services.dart';
 import 'package:firebase_core/firebase_core.dart';
-import 'package:firebase_analytics/firebase_analytics.dart';
-import 'package:firebase_analytics/observer.dart';
 
 final Dbs d = new Dbs();
 final Color color = Colors.deepOrangeAccent;
@@ -47,11 +45,11 @@ bool connected = true,
 List<String> playLists = new List<String>.empty(growable: true);
 List<String> playlistNames = new List<String>.empty(growable: true);
 final AudioPlayer ap = new AudioPlayer();
-
 void main() async {
-  d.initialize();
+  WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp();
   await FlutterDownloader.initialize(debug: true);
+  d.initialize();
   directory = await getExternalStorageDirectory();
   filesInDir = new List<String>.empty(growable: true);
   await for (var file in directory.list(recursive: false, followLinks: false))
@@ -61,13 +59,13 @@ void main() async {
     DeviceOrientation.portraitUp,
     DeviceOrientation.portraitDown,
   ]);
-  runApp(MaterialApp(
+  runApp(
+      Phoenix(
+       child: MaterialApp(
+    debugShowCheckedModeBanner: false,
     title: "MyFm",
-    // theme: ThemeData(
-    //   backgroundColor: Colors.red,
-    // ),
     home: Initial(),
-  ));
+  )));
 }
 class Initial extends StatelessWidget {
   @override
@@ -79,10 +77,11 @@ class Initial extends StatelessWidget {
         ),
         StreamProvider(
           create: (context) =>
-              context.read<AuthenticationServices>().authStateChanges,
+          context.read<AuthenticationServices>().authStateChanges,
         )
       ],
       child: MaterialApp(
+        debugShowCheckedModeBanner: false,
         home: AuthenticationWrapper(),
       ),
     );
@@ -115,21 +114,21 @@ class ForgotPassword extends StatelessWidget {
             ),
             Container(
                 child: ElevatedButton(
-              style: ElevatedButton.styleFrom(primary: color),
-              onPressed: () async {
-                String result = await context
-                    .read<AuthenticationServices>()
-                    .forgetPassword(email: forgetEmail.text);
-                if (result == "Sent new password")
-                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                      content: Text(
-                          "An email has been sent to " + forgetEmail.text)));
-                else
-                  ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text("Entered email does not exist.")));
-              },
-              child: Text("Send email for a new password"),
-            )),
+                  style: ElevatedButton.styleFrom(primary: color),
+                  onPressed: () async {
+                    String result = await context
+                        .read<AuthenticationServices>()
+                        .forgetPassword(email: forgetEmail.text);
+                    if (result == "Sent new password")
+                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                          content: Text(
+                              "An email has been sent to " + forgetEmail.text)));
+                    else
+                      ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text("Entered email does not exist.")));
+                  },
+                  child: Text("Send email for a new password"),
+                )),
           ],
         ),
       ),
@@ -272,7 +271,7 @@ class Welcome extends State<WelcomeSend> {
         }
     }
     else if(page == 4){
-      if (this.customer.liked != null) {
+      if (this.customer.liked != "") {
         if ((nSongs = await iterateCustomers()).length < 1){
           List<String> mixSongs = customer.liked.split("_");
           SplayTreeMap catFreq = new SplayTreeMap();
@@ -330,7 +329,7 @@ class Welcome extends State<WelcomeSend> {
     return nSongs;
   }
   Future<List<Song>> iterateCustomers() async {
-    List<Song> retSong = new List.empty(growable: true);
+    List<Song> retSongs = new List.empty(growable: true);
     await FirebaseFirestore.instance.collection("Customers").get().then((value) {
       value.docs.forEach((result) {
         bool skip = false;
@@ -368,7 +367,7 @@ class Welcome extends State<WelcomeSend> {
                   }
                 }
                 if (!duplicate)
-                  retSong.add(songs[int.tryParse(otherValue)]);
+                  retSongs.add(songs[int.tryParse(otherValue)]);
                 else
                   duplicate = false;
               }
@@ -380,7 +379,7 @@ class Welcome extends State<WelcomeSend> {
           skip = false;
       });
     });
-    return retSong;
+    return retSongs;
   }
 
   @override
@@ -438,32 +437,30 @@ class Welcome extends State<WelcomeSend> {
                   return showDialog<bool>(
                       context: context,
                       builder: (c) => AlertDialog(
-                            title: Text("Enter playlist's name"),
-                            content: TextField(controller: playlistName),
-                            actions: [
-                              ElevatedButton(
-                                child: Text('No'),
-                                onPressed: () => Navigator.pop(c, false),
-                              ),
-                              ElevatedButton(
-                                child: Text('Yes'),
-                                onPressed: () {
-                                  Navigator.pop(c, false);
-                                  this.customer.playlists +=
-                                      '*_' + playlistName.text;
-                                  d.updateCustomerPlaylist(
-                                      customer, customer.playlists);
-                                  playLists =
-                                      this.customer.playlists.split('*');
-                                  playListChange = true;
-                                  // for(int i=1;i<playLists.length;i++) {
-                                  //   List<String> tmp = playLists[i].split('_');
-                                  //   playlistNames.add(tmp[tmp.length - 1]);
-                                  // }
-                                },
-                              ),
-                            ],
-                          ));
+                        title: Text("Enter playlist's name"),
+                        content: TextField(controller: playlistName),
+                        actions: [
+                          ElevatedButton(
+                            child: Text('No'),
+                            onPressed: () => Navigator.pop(c, false),
+                          ),
+                          ElevatedButton(
+                            child: Text('Yes'),
+                            onPressed: () {
+                              Navigator.pop(c, false);
+                              this.customer.playlists +=
+                                  '*_' + playlistName.text;
+                              d.updateCustomerPlaylist(
+                                  customer, customer.playlists);
+                              playLists =
+                                  this.customer.playlists.split('*');
+                              playListChange = true;
+                              page = 0;
+                              Navigator.of(context).push(MaterialPageRoute(builder: (context) => WelcomeSend(this.customer, this.song)));
+                            },
+                          ),
+                        ],
+                      ));
                 },
                 child: Text("Create")),
             ElevatedButton(
@@ -569,9 +566,9 @@ class Welcome extends State<WelcomeSend> {
               children: [
                 DrawerHeader(
                     child: Image(
-                  image: AssetImage('assets/Background.jpg'),
-                  fit: BoxFit.fill,
-                )),
+                      image: AssetImage('assets/Background.jpg'),
+                      fit: BoxFit.fill,
+                    )),
                 ListTile(
                   title: Text(
                     'Home',
@@ -651,24 +648,13 @@ class Welcome extends State<WelcomeSend> {
                   },
                 ),
                 ListTile(
-                  title: Text("Account",
+                  title: Text("Account Settings",
                     textAlign: TextAlign.center,
                     style: TextStyle(fontSize: 24, color: Colors.white),
                   ),
                   onTap: () {
                     Navigator.of(context).push(MaterialPageRoute(
-                        builder: (context) => AccountSend(this.customer)));
-                  },
-                ),
-                ListTile(
-                  title: Text(
-                    "Settings",
-                    textAlign: TextAlign.center,
-                    style: TextStyle(fontSize: 24, color: Colors.white),
-                  ),
-                  onTap: () {
-                    Navigator.of(context).push(MaterialPageRoute(
-                        builder: (context) => SettingsSend(this.customer)));
+                        builder: (context) => AccountSend(this.customer, this.song)));
                   },
                 ),
                 ListTile(
@@ -748,11 +734,7 @@ class Welcome extends State<WelcomeSend> {
                       softWrap: true,
                       textAlign: TextAlign.center,
                     ),
-                    onTap: () {
-                      // if(currentPlaying != null && nSongs[index].name != currentPlaying.name){
-                      //   //MusicSend ms = new MusicSend(this.customer, currentPlaying);
-                      //   ms.stopAudio();
-                      // }
+                    onTap: () async{
                       if (previousMusic != null) {
                         if (currentPlaying != null &&
                             songs[index].name != currentPlaying.name) {
@@ -777,72 +759,23 @@ class Welcome extends State<WelcomeSend> {
     );
   }
 }
-class SettingsSend extends StatefulWidget {
-  final Customer customer;
-  SettingsSend(this.customer);
-  @override
-  State<StatefulWidget> createState() {
-    return Settings(this.customer);
-  }
-}
-
-class Settings extends State<SettingsSend> {
-  Customer customer;
-
-  Settings(this.customer);
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        backgroundColor: color,
-        centerTitle: true,
-        title: Text(
-          'Settings',
-        ),
-      ),
-      body: Column(
-        children: [
-          Container(
-            child: CheckboxListTile(
-              title: Text('Shutdown after 10 minutes'),
-              onChanged: (bool value) {
-                setState(() {
-                  shutChecked = value;
-                });
-              },
-              value: shutChecked,
-            ),
-          ),
-          Container(
-            child: ElevatedButton(
-              child: Text("Refresh Songs"),
-              onPressed: () {
-                d.loadSongs();
-              },
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
 
 class AccountSend extends StatefulWidget {
   final Customer customer;
-
-  AccountSend(this.customer);
+  Song song;
+  AccountSend(this.customer, this.song);
 
   @override
   State<StatefulWidget> createState() {
-    return Account(this.customer);
+    return Account(this.customer, this.song);
   }
 }
 
 class Account extends State<AccountSend> {
   Customer customer;
-
-  Account(this.customer);
+  Song song;
+  MusicSend ms;
+  Account(this.customer, this.song);
 
   @override
   Widget build(BuildContext context) {
@@ -873,29 +806,32 @@ class Account extends State<AccountSend> {
                   showDialog<bool>(
                       context: context,
                       builder: (c) => AlertDialog(
-                            title: Text("Warning"),
-                            content: Text(
-                                "Do you really want to delete this account?"),
-                            actions: [
-                              ElevatedButton(
-                                  onPressed: () => Navigator.pop(c, false),
-                                  child: Text("No")),
-                              ElevatedButton(
-                                  onPressed: () async {
-                                    d.deleteCustomer(customer);
-                                    Navigator.of(context).push(
-                                        MaterialPageRoute(
-                                            builder: (context) => Login()));
-                                    await context
-                                        .read<AuthenticationServices>()
-                                        .delete(
-                                          email: customer.email,
-                                          password: customer.password,
-                                        );
-                                  },
-                                  child: Text("Yes")),
-                            ],
-                          ));
+                        title: Text("Warning"),
+                        content: Text(
+                            "Do you really want to delete this account?"),
+                        actions: [
+                          ElevatedButton(
+                              onPressed: () => Navigator.pop(c, false),
+                              child: Text("No")),
+                          ElevatedButton(
+                              onPressed: () async {
+                                Navigator.pop(c, false);
+                                ms = new MusicSend(customer, song);
+                                ms.stopAudio();
+                                d.deleteCustomer(customer);
+                                Navigator.of(context).push(
+                                    MaterialPageRoute(
+                                        builder: (context) => Login()));
+                                await context
+                                    .read<AuthenticationServices>()
+                                    .delete(
+                                  email: customer.email,
+                                  password: customer.password,
+                                );
+                              },
+                              child: Text("Yes")),
+                        ],
+                      ));
                 },
                 child: Text("Delete Account")),
           ],
@@ -916,7 +852,6 @@ double range = 0;
 class MusicSend extends StatefulWidget {
   final Customer customer;
   final Song song;
-
   MusicSend(this.customer, this.song);
 
   playAudio(String path) async {
@@ -1078,7 +1013,7 @@ class Music extends State<MusicSend> {
     filesInDir.clear();
     filesInDir = new List<String>.empty(growable: true);
     await for (var file
-        in directory.list(recursive: false, followLinks: false)) {
+    in directory.list(recursive: false, followLinks: false)) {
       filesInDir.add(file.path);
     }
   }
@@ -1121,7 +1056,7 @@ class Music extends State<MusicSend> {
     } else
       this.customer.liked = "";
     List<String> artists =
-        this.song.artist.trim().split(','); //split(this.song.artist, ',');
+    this.song.artist.trim().split(','); //split(this.song.artist, ',');
     return WillPopScope(
       onWillPop: () async {
         readFiles();
@@ -1191,80 +1126,80 @@ class Music extends State<MusicSend> {
                       return showDialog<bool>(
                           context: context,
                           builder: (c) => AlertDialog(
-                                title: Text("Select a playlist"),
-                                content: StatefulBuilder(
-                                  builder: (BuildContext context,
-                                      void Function(void Function()) setState) {
-                                    return DropdownButton(
-                                      value: selectedPlaylist,
-                                      items: playlistNames
-                                          .map((String item) =>
-                                              new DropdownMenuItem<String>(
-                                                  value: item,
-                                                  child: new Text(item)))
-                                          .toList(),
-                                      onChanged: (String value) {
-                                        setState(() {
-                                          selectedPlaylist = value;
-                                        });
-                                      },
-                                    );
+                            title: Text("Select a playlist"),
+                            content: StatefulBuilder(
+                              builder: (BuildContext context,
+                                  void Function(void Function()) setState) {
+                                return DropdownButton(
+                                  value: selectedPlaylist,
+                                  items: playlistNames
+                                      .map((String item) =>
+                                  new DropdownMenuItem<String>(
+                                      value: item,
+                                      child: new Text(item)))
+                                      .toList(),
+                                  onChanged: (String value) {
+                                    setState(() {
+                                      selectedPlaylist = value;
+                                    });
                                   },
-                                ),
-                                actions: [
-                                  ElevatedButton(
-                                    child: Text('Cancel'),
-                                    onPressed: () => Navigator.pop(c, false),
-                                  ),
-                                  ElevatedButton(
-                                    child: Text('Add to the playlist'),
-                                    onPressed: () {
-                                      Navigator.pop(c, false);
-                                      playLists =
-                                          this.customer.playlists.split('*');
-                                      int cntIdx = 0;
-                                      for (String pList in playlistNames) {
-                                        if (pList == selectedPlaylist) break;
-                                        cntIdx++;
-                                      }
-                                      int cntPlaylists = 0;
-                                      String tmpPlaylist = "";
-                                      for (int i = 0;
-                                          i < this.customer.playlists.length;
-                                          i++) {
-                                        if (this.customer.playlists[i] == '*') {
-                                          if (cntPlaylists == cntIdx) {
-                                            List<String> tmpUnique =
-                                                playLists[cntPlaylists + 1]
-                                                    .split('_');
-                                            for (int j = 1;
-                                                j < tmpUnique.length - 1;
-                                                j++) {
-                                              if (int.tryParse(tmpUnique[j]) ==
-                                                  this.song.id) {
-                                                return;
-                                              }
-                                            }
-                                            tmpPlaylist +=
-                                                this.customer.playlists[i] +
-                                                    '_' +
-                                                    this.song.id.toString();
-                                            cntPlaylists++;
-                                            continue;
+                                );
+                              },
+                            ),
+                            actions: [
+                              ElevatedButton(
+                                child: Text('Cancel'),
+                                onPressed: () => Navigator.pop(c, false),
+                              ),
+                              ElevatedButton(
+                                child: Text('Add to the playlist'),
+                                onPressed: () {
+                                  Navigator.pop(c, false);
+                                  playLists =
+                                      this.customer.playlists.split('*');
+                                  int cntIdx = 0;
+                                  for (String pList in playlistNames) {
+                                    if (pList == selectedPlaylist) break;
+                                    cntIdx++;
+                                  }
+                                  int cntPlaylists = 0;
+                                  String tmpPlaylist = "";
+                                  for (int i = 0;
+                                  i < this.customer.playlists.length;
+                                  i++) {
+                                    if (this.customer.playlists[i] == '*') {
+                                      if (cntPlaylists == cntIdx) {
+                                        List<String> tmpUnique =
+                                        playLists[cntPlaylists + 1]
+                                            .split('_');
+                                        for (int j = 1;
+                                        j < tmpUnique.length - 1;
+                                        j++) {
+                                          if (int.tryParse(tmpUnique[j]) ==
+                                              this.song.id) {
+                                            return;
                                           }
-                                          cntPlaylists++;
                                         }
                                         tmpPlaylist +=
-                                            this.customer.playlists[i];
+                                            this.customer.playlists[i] +
+                                                '_' +
+                                                this.song.id.toString();
+                                        cntPlaylists++;
+                                        continue;
                                       }
-                                      this.customer.playlists = tmpPlaylist;
-                                      d.updateCustomerPlaylist(
-                                          customer, customer.playlists);
-                                      playListChange = true;
-                                    },
-                                  ),
-                                ],
-                              ));
+                                      cntPlaylists++;
+                                    }
+                                    tmpPlaylist +=
+                                    this.customer.playlists[i];
+                                  }
+                                  this.customer.playlists = tmpPlaylist;
+                                  d.updateCustomerPlaylist(
+                                      customer, customer.playlists);
+                                  playListChange = true;
+                                },
+                              ),
+                            ],
+                          ));
                     }),
                 IconButton(
                   icon: Icon(Icons.download_rounded),
@@ -1274,11 +1209,11 @@ class Music extends State<MusicSend> {
                       String folderToDownload =
                           this.song.artist + ' - ' + this.song.name;
                       final path =
-                          Directory(directory.path + '/' + folderToDownload);
+                      Directory(directory.path + '/' + folderToDownload);
                       path.create();
                       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
                           content:
-                              Text("Started downloading " + folderToDownload)));
+                          Text("Started downloading " + folderToDownload)));
                       await FlutterDownloader.enqueue(
                         fileName: folderToDownload + '.mp3',
                         url: this.song.urlSong,
@@ -1291,7 +1226,7 @@ class Music extends State<MusicSend> {
                         builder: (c) => AlertDialog(
                           title: Text('Warning'),
                           content:
-                              Text('Do you really want to delete this song?'),
+                          Text('Do you really want to delete this song?'),
                           actions: [
                             ElevatedButton(
                               child: Text('No'),
@@ -1387,12 +1322,6 @@ class Music extends State<MusicSend> {
                 )
               ],
             ),
-            // Row(
-            //   mainAxisAlignment: MainAxisAlignment.center,
-            //   children: [
-            //     Text(audioState, style: TextStyle(fontSize: 24),),
-            //   ],
-            // ),
             Flexible(
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
@@ -1559,10 +1488,10 @@ class Update extends State<UpdateSend> {
                   this.customer.password = updPass.text;
                   d.createCustomer(this.customer);
                   String result =
-                      await context.read<AuthenticationServices>().signUp(
-                            email: this.customer.email.trim(),
-                            password: this.customer.password.trim(),
-                          );
+                  await context.read<AuthenticationServices>().signUp(
+                    email: this.customer.email.trim(),
+                    password: this.customer.password.trim(),
+                  );
                   ScaffoldMessenger.of(context).showSnackBar(SnackBar(
                       content: Text("Account information has been updated.")));
                 } else
