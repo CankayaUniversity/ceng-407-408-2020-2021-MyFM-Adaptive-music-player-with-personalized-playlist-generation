@@ -447,16 +447,22 @@ class Welcome extends State<WelcomeSend> {
                           ElevatedButton(
                             child: Text('Yes'),
                             onPressed: () {
-                              Navigator.pop(c, false);
-                              this.customer.playlists +=
-                                  '*_' + playlistName.text;
-                              d.updateCustomerPlaylist(
-                                  customer, customer.playlists);
-                              playLists =
-                                  this.customer.playlists.split('*');
-                              playListChange = true;
-                              page = 0;
-                              Navigator.of(context).push(MaterialPageRoute(builder: (context) => WelcomeSend(this.customer, this.song)));
+                              if(playlistName.text != "") {
+                                Navigator.pop(c, false);
+                                this.customer.playlists +=
+                                    '*_' + playlistName.text;
+                                d.updateCustomerPlaylist(
+                                    customer, customer.playlists);
+                                playLists =
+                                    this.customer.playlists.split('*');
+                                playListChange = true;
+                                page = 0;
+                                Navigator.of(context).push(MaterialPageRoute(
+                                    builder: (context) =>
+                                        WelcomeSend(this.customer, this.song)));
+                              }
+                              else
+                                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Please enter a name.")));
                             },
                           ),
                         ],
