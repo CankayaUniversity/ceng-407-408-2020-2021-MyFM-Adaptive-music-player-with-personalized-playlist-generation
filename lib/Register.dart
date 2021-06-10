@@ -50,12 +50,10 @@ class Register extends StatelessWidget {
                   ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Please enter all fields.")));
                   return;
                 }
-                print("CAME " + email.text +", " + password.text);
                 String result = await context.read<AuthenticationServices>().signUp(
                   email: email.text.trim(),
                   password: password.text.trim(),
                 );
-                print("RES:  " + result);
                 if(result == "Signed up") {
                   Customer newCustomer = new Customer(
                     name: this.name.text == null ? "" : this.name.text,
@@ -64,7 +62,6 @@ class Register extends StatelessWidget {
                     playlists: "",
                     history: "",
                     liked: "",
-                    lastListened: "",
                   );
                   d.createCustomer(newCustomer);
                   playlistNames = new List<String>.empty(growable: true);

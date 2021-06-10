@@ -1,13 +1,6 @@
 import 'dart:async';
 import 'package:firebase_core/firebase_core.dart';
-import 'package:firebase_analytics/firebase_analytics.dart';
-import 'package:firebase_analytics/observer.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:first_flutter/main.dart';
-import 'package:flutter/material.dart';
-import 'package:flutter/widgets.dart';
-import 'package:path/path.dart';
-//import 'package:sqflite/sqflite.dart';
 import 'package:flutter/services.dart' show rootBundle;
 
 class Dbs {
@@ -30,13 +23,12 @@ class Dbs {
         String artists = readOne[0].split('-')[0];
         String names = readOne[0].split('-')[1];
         print(i.toString()+": " + artists +" and " + names);
-        //insertSongs(new Song(id: i, name: names, artist: artists, urlSong: readOne[1], urlPic: readOne[2], category: readOne[3]));
-          await Firebase.initializeApp();
-          FirebaseFirestore.instance.collection('Songs').doc(i.toString()).set({'id': i, 'name': names, 'artist': artists, 'urlMusic': readOne[1], 'urlPicture': readOne[2], 'category': readOne[3]});
+        await Firebase.initializeApp();
+        FirebaseFirestore.instance.collection('Songs').doc(i.toString()).set({'id': i, 'name': names, 'artist': artists, 'urlMusic': readOne[1], 'urlPicture': readOne[2], 'category': readOne[3]});
       }
     }
     void createCustomer(Customer customer) async{
-      FirebaseFirestore.instance.collection('Customers').doc(customer.email).set({'email': customer.email, 'password': customer.password, 'name': customer.name, 'lastListened': customer.lastListened, 'liked': customer.liked, 'history': customer.history, 'playlists': customer.playlists});
+      FirebaseFirestore.instance.collection('Customers').doc(customer.email).set({'email': customer.email, 'password': customer.password, 'name': customer.name, 'liked': customer.liked, 'history': customer.history, 'playlists': customer.playlists});
     }
     void initialize() async {
       //loadSongs();
@@ -44,7 +36,7 @@ class Dbs {
     Future<Customer> findCustomer(String email) async{
       DocumentReference doc = FirebaseFirestore.instance.collection("Customers").doc(email);
       var document = await doc.get();
-       Customer retCustomer = new Customer(email: document.get('email'), password: document.get('password'), name: document.get('name'), lastListened: document.get('lastListened'), liked: document.get('liked'), history: document.get('history'), playlists: document.get('playlists'));
+       Customer retCustomer = new Customer(email: document.get('email'), password: document.get('password'), name: document.get('name'), liked: document.get('liked'), history: document.get('history'), playlists: document.get('playlists'));
        return retCustomer;
     }
     void updateCustomerLiked(Customer customer, String liked) async {
@@ -52,9 +44,6 @@ class Dbs {
     }
     void updateCustomerHistory(Customer customer, String history) async {
       FirebaseFirestore.instance.collection("Customers").doc(customer.email).update({'history': history});
-    }
-    void updateCustomerLastListened(Customer customer, String lastListened) async {
-      FirebaseFirestore.instance.collection("Customers").doc(customer.email).update({'lastListened': lastListened});
     }
     void updateCustomerPlaylist(Customer customer, String playlists) async {
       FirebaseFirestore.instance.collection("Customers").doc(customer.email).update({'playlists': playlists});
@@ -67,14 +56,13 @@ class Dbs {
     }
   }
 class Customer {
-  String name, email, password, lastListened, liked, history, playlists;
-  Customer({this.name, this.email, this.password, this.lastListened, this.liked, this.history, this.playlists});
+  String name, email, password, liked, history, playlists;
+  Customer({this.name, this.email, this.password, this.liked, this.history, this.playlists});
   Map<String, dynamic> toMap() {
     return {
       'name': name,
       'email': email,
       'password': password,
-      'lastListened': lastListened,
       'liked': liked,
       'history': history,
       'playlists': playlists,

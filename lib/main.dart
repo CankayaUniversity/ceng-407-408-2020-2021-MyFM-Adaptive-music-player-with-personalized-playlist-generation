@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'dart:collection';
 import 'dart:io';
-import 'dart:isolate';
 import 'dart:math';
 import 'dart:ui';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -231,10 +230,11 @@ class Welcome extends State<WelcomeSend> {
           }
         }
       }
-      else if (customer.lastListened != null) {
+      else if (customer.history != "") {
+        int lastListenedIdx = int.tryParse(customer.history.split('_')[customer.history.split('_').length - 2]);
         List<Song> laterSongs = new List<Song>.empty(growable: true);
         for (int i = 0; i < songs.length; i++) {
-          if (songs[i].category == customer.lastListened)
+          if (songs[i].category == songs[lastListenedIdx].category)
             nSongs.add(songs[i]);
           else
             laterSongs.add(songs[i]);
@@ -245,7 +245,7 @@ class Welcome extends State<WelcomeSend> {
       else
         nSongs = songs;
     }
-    else if (page == 1 && customer.liked != null) {
+    else if (page == 1 && customer.liked != "") {
       List<String> likedSongs = customer.liked.split("_");
       int idx;
       for (int i = likedSongs.length - 1; i >= 0; i--) {
@@ -253,7 +253,7 @@ class Welcome extends State<WelcomeSend> {
           nSongs.add(songs[idx]);
       }
     }
-    else if (page == 2 && customer.history != null) {
+    else if (page == 2 && customer.history != "") {
       List<String> historySongs = customer.history.split("_");
       int idx;
       for (int i = historySongs.length - 1; i >= 0; i--) {
@@ -706,11 +706,15 @@ class Welcome extends State<WelcomeSend> {
                 child: CircularProgressIndicator(backgroundColor: color,),
               );
             List<Song> songs = snapshot.data;
+            if(songs.length < 1)
+              return Container(
+                alignment: Alignment.center,
+                child: Text("No songs found."),
+              );
             return ListView.builder(
               itemCount: songs.length,
               itemBuilder: (BuildContext context, int index) {
                 copyNSong = songs;
-                //songs = snapshot.data;
                 return Container(
                   foregroundDecoration: BoxDecoration(),
                   height: 200,
@@ -721,7 +725,7 @@ class Welcome extends State<WelcomeSend> {
                       )),
                   child: ListTile(
                     title: Text(
-                      songs[index].artist + ' - ' + songs[index].name + " [" + songs[index].category + "]",
+                      songs[index].artist + ' - ' + songs[index].name ,
                       style: TextStyle(
                         color: Colors.black,
                         shadows: <Shadow>[
@@ -914,8 +918,6 @@ class MusicSend extends StatefulWidget {
 
   @override
   State<StatefulWidget> createState() {
-    this.customer.lastListened = song.category;
-    d.updateCustomerLastListened(this.customer, song.category);
     back = false;
     checkExists(this.song);
     return Music(this.customer, song);
