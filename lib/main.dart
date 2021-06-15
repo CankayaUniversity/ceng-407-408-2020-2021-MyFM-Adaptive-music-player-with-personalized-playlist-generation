@@ -10,13 +10,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_phoenix/flutter_phoenix.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:provider/provider.dart';
-import 'package:path/path.dart';
 import 'AuthenticationServices.dart';
 import 'Customer.dart';
 import 'LoginPage.dart';
 import 'package:audioplayers/audioplayers.dart';
-import 'package:flutter_downloader/flutter_downloader.dart';
-import 'package:permission_handler/permission_handler.dart';
 import 'package:flutter/services.dart';
 import 'package:firebase_core/firebase_core.dart';
 
@@ -25,7 +22,7 @@ final Color color = Colors.deepOrangeAccent;
 final Color innerColor = Colors.white;
 List<Song> songs, nSongs;
 String path, toPlay, individualArtist, pictureLocation;
-List<String> likes, filesInDir;
+List<String> likes;
 int page;
 Directory directory;
 List<Song> copyNSong = new List<Song>.empty(growable: true);
@@ -34,8 +31,6 @@ Music previousMusic;
 int next = 1, selectedIndex;
 bool connected = true,
     moveSong,
-    shutChecked = false,
-    beingUsed = false,
     back = false,
     loopToggle = false,
     playListChange = true,
@@ -47,12 +42,8 @@ final AudioPlayer ap = new AudioPlayer();
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp();
-  await FlutterDownloader.initialize(debug: true);
   d.initialize();
   directory = await getExternalStorageDirectory();
-  filesInDir = new List<String>.empty(growable: true);
-  await for (var file in directory.list(recursive: false, followLinks: false))
-    filesInDir.add(file.path);
   songs = List.empty(growable: true);
   SystemChrome.setPreferredOrientations([
     DeviceOrientation.portraitUp,
@@ -148,14 +139,7 @@ class CategoryFrequency {
 class WelcomeSend extends StatefulWidget {
   final Customer customer;
   final Song song;
-
   WelcomeSend(this.customer, this.song);
-
-  // void checkConnection() async{
-  //   var connectivityResult = await (Connectivity().checkConnectivity());
-  //   if (connectivityResult == ConnectivityResult.none)
-  //     connected = false;
-  // }
   @override
   State<StatefulWidget> createState() {
     //checkConnection();
@@ -261,52 +245,42 @@ class Welcome extends State<WelcomeSend> {
           nSongs.add(songs[idx]);
       }
     }
-    else if (page == 3) {
-      for (int i = filesInDir.length - 1; i >= 0; i--)
-        for (int j = 0; j < songs.length; j++) {
-          if (filesInDir[i] == directory.path + '/' + songs[j].artist + ' - ' + songs[j].name) {
-            nSongs.add(songs[j]);
-            break;
-          }
-        }
-    }
-    else if(page == 4){
+    else if(page == 3){
       if (this.customer.liked != "") {
-        if ((nSongs = await iterateCustomers()).length < 1){
-          List<String> mixSongs = customer.liked.split("_");
-          SplayTreeMap catFreq = new SplayTreeMap();
-          for (int i = 0; i < mixSongs.length - 1; i++)
-            catFreq[songs[int.tryParse(mixSongs[i])].category] =
-                0.toString();
-          for (int i = 0; i < mixSongs.length - 1; i++)
-            catFreq[songs[int.tryParse(mixSongs[i])].category] = (int.tryParse(
-                catFreq[songs[int.tryParse(mixSongs[i])].category]) + 1)
-                .toString();
-          List<CategoryFrequency> cf = new List<CategoryFrequency>.empty(
-              growable: true);
-          catFreq.forEach((key, value) {
-            cf.add(new CategoryFrequency(key, int.tryParse(value)));
-          });
-          int maxIdx;
-          for (int i = 0; i < cf.length; i++) {
-            maxIdx = i;
-            for (int j = i + 1; j < cf.length; j++)
-              if (cf[j].frequency > cf[maxIdx].frequency) maxIdx = j;
-            CategoryFrequency temp = cf[i];
-            cf[i] = cf[maxIdx];
-            cf[maxIdx] = temp;
-          }
-          for (int j = 0; j < cf.length; j++)
-            for (int i = songs.length - 1; i >= 0; i--)
-              if (songs[i].category == cf[j].name) {
-                nSongs.add(songs[i]);
-              }
+        nSongs = await iterateCustomers();
+        List<String> mixSongs = customer.liked.split("_");
+        SplayTreeMap catFreq = new SplayTreeMap();
+        for (int i = 0; i < mixSongs.length - 1; i++)
+          catFreq[songs[int.tryParse(mixSongs[i])].category] =
+              0.toString();
+        for (int i = 0; i < mixSongs.length - 1; i++)
+          catFreq[songs[int.tryParse(mixSongs[i])].category] = (int.tryParse(
+              catFreq[songs[int.tryParse(mixSongs[i])].category]) + 1)
+              .toString();
+        List<CategoryFrequency> cf = new List<CategoryFrequency>.empty(
+            growable: true);
+        catFreq.forEach((key, value) {
+          cf.add(new CategoryFrequency(key, int.tryParse(value)));
+        });
+        int maxIdx;
+        for (int i = 0; i < cf.length; i++) {
+          maxIdx = i;
+          for (int j = i + 1; j < cf.length; j++)
+            if (cf[j].frequency > cf[maxIdx].frequency) maxIdx = j;
+          CategoryFrequency temp = cf[i];
+          cf[i] = cf[maxIdx];
+          cf[maxIdx] = temp;
         }
+        for (int j = 0; j < cf.length; j++)
+          for (int i = songs.length - 1; i >= 0; i--)
+            if (songs[i].category == cf[j].name) {
+              nSongs.add(songs[i]);
+            }
       }
       else
         nSongs = songs;
     }
-    else if (page == 5) {
+    else if (page == 4) {
       for (int i = 0; i < songs.length; i++) {
         List<String> currentArtists =
         songs[i].artist.trim().split(',');
@@ -316,7 +290,7 @@ class Welcome extends State<WelcomeSend> {
         }
       }
     }
-    else if (page == 6 && playLists.length > 0 && currentPlaylist != "") {
+    else if (page == 5 && playLists.length > 0 && currentPlaylist != "") {
       List<String> contentPlaylist;
       for (String singlePlaylist in playLists) {
         List<String> tmpSinglePlaylist = singlePlaylist.split('_');
@@ -398,12 +372,10 @@ class Welcome extends State<WelcomeSend> {
       else if (page == 2)
         titleWidget = Text('History');
       else if (page == 3)
-        titleWidget = Text('Downloaded Songs');
-      else if (page == 4)
         titleWidget = Text('Your Mix');
-      else if (page == 5)
+      else if (page == 4)
         titleWidget = Text("Songs ft. " + individualArtist);
-      else if (page == 6) {
+      else if (page == 5) {
         if (currentPlaylist == null) {
           if (playlistNames.length > 0)
             currentPlaylist = playlistNames[0];
@@ -605,17 +577,6 @@ class Welcome extends State<WelcomeSend> {
                 ),
                 ListTile(
                   title: Text(
-                    "Your Mix",
-                    textAlign: TextAlign.center,
-                    style: TextStyle(fontSize: 24, color: Colors.white),
-                  ),
-                  onTap: () {
-                    page = 4;
-                    Navigator.of(context).push(MaterialPageRoute(builder: (context) => WelcomeSend(this.customer, this.song)));
-                  },
-                ),
-                ListTile(
-                  title: Text(
                     "History",
                     textAlign: TextAlign.center,
                     style: TextStyle(fontSize: 24, color: Colors.white),
@@ -629,25 +590,23 @@ class Welcome extends State<WelcomeSend> {
                 ),
                 ListTile(
                   title: Text(
-                    "Playlists",
-                    textAlign: TextAlign.center,
-                    style: TextStyle(fontSize: 24, color: Colors.white),
-                  ),
-                  onTap: () {
-                    page = 6;
-                    Navigator.of(context).push(MaterialPageRoute(
-                        builder: (context) =>
-                            WelcomeSend(this.customer, this.song)));
-                  },
-                ),
-                ListTile(
-                  title: Text(
-                    "Downloads",
+                    "Your Mix",
                     textAlign: TextAlign.center,
                     style: TextStyle(fontSize: 24, color: Colors.white),
                   ),
                   onTap: () {
                     page = 3;
+                    Navigator.of(context).push(MaterialPageRoute(builder: (context) => WelcomeSend(this.customer, this.song)));
+                  },
+                ),
+                ListTile(
+                  title: Text(
+                    "Playlists",
+                    textAlign: TextAlign.center,
+                    style: TextStyle(fontSize: 24, color: Colors.white),
+                  ),
+                  onTap: () {
+                    page = 5;
                     Navigator.of(context).push(MaterialPageRoute(
                         builder: (context) =>
                             WelcomeSend(this.customer, this.song)));
@@ -752,8 +711,6 @@ class Welcome extends State<WelcomeSend> {
                           new MusicSend(this.customer, currentPlaying);
                           ms.stopAudio();
                         }
-                        previousMusic.disposed = true;
-                        previousMusic.dispose();
                       }
                       Navigator.of(context).push(MaterialPageRoute(
                           builder: (context) =>
@@ -930,7 +887,6 @@ class Music extends State<MusicSend> {
   MusicSend ms;
   Color likeColor, loopColor, shuffleColor;
   String title;
-  bool disposed = false;
 
   Music(this.customer, this.song);
 
@@ -947,34 +903,27 @@ class Music extends State<MusicSend> {
   initAudio() {
     if (!back) {
       ap.onDurationChanged.listen((event) {
-        if (ms != null && !this.disposed)
+        if (ms != null)
           setState(() {
             totalDuration = event;
           });
       });
       ap.onAudioPositionChanged.listen((event) {
-        if (ms != null && !this.disposed)
+        if (ms != null)
           setState(() {
             currentDuration = event;
             range = currentDuration.inSeconds.toDouble();
           });
       });
       ap.onPlayerStateChanged.listen((event) {
-        if (!this.disposed)
-          setState(() {
-            if (event == AudioPlayerState.PAUSED) audioState = "Paused";
-            if (event == AudioPlayerState.PLAYING) {
-              audioState = "Playing";
-              moveSong = true;
-              if (shutChecked && !beingUsed)
-                Future.delayed(const Duration(minutes: 10), () {
-                  print("Closing");
-                  exit(0);
-                });
-            }
+        setState(() {
+          if (event == AudioPlayerState.PAUSED) audioState = "Paused";
+          if (event == AudioPlayerState.PLAYING) {
+            audioState = "Playing";
+            moveSong = true;
+          }
             if (event == AudioPlayerState.COMPLETED) {
               audioState = "Over";
-              beingUsed = false;
               if (moveSong) {
                 if (loopToggle)
                   ms.playAudio(toPlay);
@@ -1017,15 +966,6 @@ class Music extends State<MusicSend> {
     return minutes.toInt().toString() + ":" + seconds.toInt().toString();
   }
 
-  void readFiles() async {
-    filesInDir.clear();
-    filesInDir = new List<String>.empty(growable: true);
-    await for (var file
-    in directory.list(recursive: false, followLinks: false)) {
-      filesInDir.add(file.path);
-    }
-  }
-
   String reverse(String str) {
     String nStr = "";
     for (int i = str.length - 1; i >= 0; i--) nStr += str[i];
@@ -1037,7 +977,7 @@ class Music extends State<MusicSend> {
       return ElevatedButton(
         style: ElevatedButton.styleFrom(primary: color),
         onPressed: () {
-          page = 5;
+          page = 4;
           individualArtist = artists[index];
           Navigator.of(context).push(MaterialPageRoute(
               builder: (context) => WelcomeSend(customer, this.song)));
@@ -1067,10 +1007,7 @@ class Music extends State<MusicSend> {
     this.song.artist.trim().split(','); //split(this.song.artist, ',');
     return WillPopScope(
       onWillPop: () async {
-        readFiles();
         back = true;
-        // this.deactivate();
-        // this.dispose();
         Navigator.of(context).push(MaterialPageRoute(
             builder: (context) => WelcomeSend(customer, this.song)));
         return false;
@@ -1209,61 +1146,6 @@ class Music extends State<MusicSend> {
                             ],
                           ));
                     }),
-                IconButton(
-                  icon: Icon(Icons.download_rounded),
-                  onPressed: () async {
-                    if (await Permission.storage.request().isDenied) return;
-                    if (!exists) {
-                      String folderToDownload =
-                          this.song.artist + ' - ' + this.song.name;
-                      final path =
-                      Directory(directory.path + '/' + folderToDownload);
-                      path.create();
-                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                          content:
-                          Text("Started downloading " + folderToDownload)));
-                      await FlutterDownloader.enqueue(
-                        fileName: folderToDownload + '.mp3',
-                        url: this.song.urlSong,
-                        savedDir: directory.path + '/' + folderToDownload,
-                      );
-                      exists = true;
-                    } else {
-                      showDialog<bool>(
-                        context: context,
-                        builder: (c) => AlertDialog(
-                          title: Text('Warning'),
-                          content:
-                          Text('Do you really want to delete this song?'),
-                          actions: [
-                            ElevatedButton(
-                              child: Text('No'),
-                              onPressed: () => Navigator.pop(c, false),
-                            ),
-                            ElevatedButton(
-                              child: Text('Yes'),
-                              onPressed: () {
-                                String pathToDelete =
-                                    this.song.artist + ' - ' + this.song.name;
-                                Directory(directory.path + '/' + pathToDelete)
-                                    .deleteSync(recursive: true);
-                                readFiles();
-                                ms.stopAudio();
-                                Navigator.of(context).push(MaterialPageRoute(
-                                    builder: (context) =>
-                                        WelcomeSend(customer, this.song)));
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
-                                        content: Text(pathToDelete +
-                                            " has been deleted.")));
-                              },
-                            ),
-                          ],
-                        ),
-                      );
-                    }
-                  },
-                )
               ],
             ),
             Row(
@@ -1358,8 +1240,6 @@ class Music extends State<MusicSend> {
                               currentPlaying = copyNSong[i - 1];
                             } else
                               currentPlaying = copyNSong[copyNSong.length - 1];
-                            previousMusic.disposed = true;
-                            previousMusic.dispose();
                             Navigator.of(context).push(MaterialPageRoute(
                                 builder: (context) =>
                                     MusicSend(customer, currentPlaying)));
@@ -1378,7 +1258,6 @@ class Music extends State<MusicSend> {
                         else {
                           ms.playAudio(toPlay);
                         }
-                        beingUsed = true;
                       });
                     },
                     icon: icon,
@@ -1408,8 +1287,6 @@ class Music extends State<MusicSend> {
                             } else
                               currentPlaying = copyNSong[0];
                             this.deactivate();
-                            previousMusic.disposed = true;
-                            previousMusic.dispose();
                             Navigator.of(context).push(MaterialPageRoute(
                                 builder: (context) =>
                                     MusicSend(customer, currentPlaying)));
@@ -1487,6 +1364,8 @@ class Update extends State<UpdateSend> {
               style: ElevatedButton.styleFrom(primary: color),
               onPressed: () async {
                 if (updEmail.text != "" && updPass.text != "") {
+                  updEmail.text = updEmail.text.trim();
+                  updPass.text = updPass.text.trim();
                   d.deleteCustomer(this.customer);
                   await context.read<AuthenticationServices>().delete(
                       email: this.customer.email,
@@ -1495,7 +1374,6 @@ class Update extends State<UpdateSend> {
                   this.customer.name = updName.text;
                   this.customer.password = updPass.text;
                   d.createCustomer(this.customer);
-                  String result =
                   await context.read<AuthenticationServices>().signUp(
                     email: this.customer.email.trim(),
                     password: this.customer.password.trim(),

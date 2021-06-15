@@ -73,23 +73,6 @@ class Customer {
     return 'Customer{name: $name, email: $email, password: $password, liked: $liked, history: $history, playlists: $playlists}';
   }
 }
-class SongCategory {
-  int id;
-  int occurrence;
-  String name;
-  SongCategory(int id, String name, int occurrence){
-    this.id = id;
-    this.name = name;
-    this.occurrence = occurrence;
-  }
-  Map<String, dynamic> toMap() {
-    return {
-      'id': id,
-      'name': name,
-      'occurrence': occurrence,
-    };
-  }
-}
 class Song{
   final int id;
   String name, artist, urlSong, urlPic, category;

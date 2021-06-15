@@ -43,9 +43,11 @@ class Login extends StatelessWidget {
             Container(
               child: ElevatedButton(style: ElevatedButton.styleFrom(primary: color),onPressed: () async {
                 if(email.text != "" && password.text != "") {
+                  email.text = email.text.trim();
+                  password.text = password.text.trim();
                   String result = await context.read<AuthenticationServices>().signIn(
-                    email: email.text.trim(),
-                    password: password.text.trim(),
+                    email: email.text,
+                    password: password.text,
                   );
                   if(result == "Signed in") {
                     Customer customerLog = await d.findCustomer(email.text);
