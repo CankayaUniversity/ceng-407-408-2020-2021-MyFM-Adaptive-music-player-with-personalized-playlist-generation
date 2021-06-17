@@ -26,7 +26,7 @@ List<String> likes;
 int page;
 Directory directory;
 List<Song> copyNSong = new List<Song>.empty(growable: true);
-Song currentPlaying, currentLoaded;
+Song prevPlaying, currentPlaying, currentLoaded;
 Music previousMusic;
 int next = 1, selectedIndex;
 bool connected = true,
@@ -51,11 +51,11 @@ void main() async {
   ]);
   runApp(
       Phoenix(
-       child: MaterialApp(
-    debugShowCheckedModeBanner: false,
-    title: "MyFm",
-    home: Initial(),
-  )));
+          child: MaterialApp(
+            debugShowCheckedModeBanner: false,
+            title: "MyFm",
+            home: Initial(),
+          )));
 }
 class Initial extends StatelessWidget {
   @override
@@ -128,11 +128,11 @@ class ForgotPassword extends StatelessWidget {
 
 class CategoryFrequency {
   String name;
-  int frequency;
-
-  CategoryFrequency(String name, int frequency) {
+  int frequency, songsAllocated;
+  CategoryFrequency(String name, int frequency, int songsAllocated) {
     this.name = name;
     this.frequency = frequency;
+    this.songsAllocated = songsAllocated;
   }
 }
 
@@ -247,23 +247,21 @@ class Welcome extends State<WelcomeSend> {
     }
     else if(page == 3){
       if (this.customer.liked != "") {
-        nSongs = await iterateCustomers();
         List<String> mixSongs = customer.liked.split("_");
+        if(mixSongs.length > 4)
+          nSongs = await iterateCustomers();//check if other users' have similar taste
+        int similarLength = nSongs.length;
         SplayTreeMap catFreq = new SplayTreeMap();
         for (int i = 0; i < mixSongs.length - 1; i++)
-          catFreq[songs[int.tryParse(mixSongs[i])].category] =
-              0.toString();
+          catFreq[songs[int.tryParse(mixSongs[i])].category] = 0.toString();
         for (int i = 0; i < mixSongs.length - 1; i++)
-          catFreq[songs[int.tryParse(mixSongs[i])].category] = (int.tryParse(
-              catFreq[songs[int.tryParse(mixSongs[i])].category]) + 1)
-              .toString();
-        List<CategoryFrequency> cf = new List<CategoryFrequency>.empty(
-            growable: true);
+          catFreq[songs[int.tryParse(mixSongs[i])].category] = (int.tryParse(catFreq[songs[int.tryParse(mixSongs[i])].category]) + 1).toString();
+        List<CategoryFrequency> cf = new List<CategoryFrequency>.empty(growable: true);
         catFreq.forEach((key, value) {
-          cf.add(new CategoryFrequency(key, int.tryParse(value)));
+          cf.add(new CategoryFrequency(key, int.tryParse(value), (int.tryParse(value)/(mixSongs.length-1) * (songs.length-1)).round()));
         });
         int maxIdx;
-        for (int i = 0; i < cf.length; i++) {
+        for (int i = 0; i < cf.length; i++) {//sort the frequencies
           maxIdx = i;
           for (int j = i + 1; j < cf.length; j++)
             if (cf[j].frequency > cf[maxIdx].frequency) maxIdx = j;
@@ -271,11 +269,24 @@ class Welcome extends State<WelcomeSend> {
           cf[i] = cf[maxIdx];
           cf[maxIdx] = temp;
         }
-        for (int j = 0; j < cf.length; j++)
+        for (int j = 0, addedCat = 0; j < cf.length; j++, addedCat = 0) {
           for (int i = songs.length - 1; i >= 0; i--)
             if (songs[i].category == cf[j].name) {
-              nSongs.add(songs[i]);
+              if(addedCat >= cf[j].songsAllocated)
+                break;
+              bool isUnique = true;
+              for(int unique = 0;unique<similarLength;unique++) {
+                if (songs[nSongs[unique].id] == songs[i]) {
+                  isUnique = false;
+                  break;
+                }
+              }
+              if(isUnique) {
+                nSongs.add(songs[i]);
+                addedCat++;
+              }
             }
+        }
       }
       else
         nSongs = songs;
@@ -326,7 +337,7 @@ class Welcome extends State<WelcomeSend> {
             for (int j = 0; j < otherLiked.length; j++)
               if (thisLiked[i] == otherLiked[j]) {
                 equal++;
-                if (equal > thisLiked.length / 2) {
+                if (equal > (3 * thisLiked.length / 4)) {
                   copyOther = true;
                   break;
                 }
@@ -705,8 +716,7 @@ class Welcome extends State<WelcomeSend> {
                     ),
                     onTap: () async{
                       if (previousMusic != null) {
-                        if (currentPlaying != null &&
-                            songs[index].name != currentPlaying.name) {
+                        if (currentPlaying != null && songs[index].name != currentPlaying.name) {
                           MusicSend ms =
                           new MusicSend(this.customer, currentPlaying);
                           ms.stopAudio();
@@ -729,7 +739,7 @@ class Welcome extends State<WelcomeSend> {
 
 class AccountSend extends StatefulWidget {
   final Customer customer;
-  Song song;
+  final Song song;
   AccountSend(this.customer, this.song);
 
   @override
@@ -821,12 +831,9 @@ class MusicSend extends StatefulWidget {
   final Song song;
   MusicSend(this.customer, this.song);
 
-  playAudio(String path) async {
+  playAudio() async {
     currentPlaying = this.song;
-    if (exists)
-      ap.play(path, isLocal: true);
-    else
-      ap.play(path);
+    ap.play(currentPlaying.urlSong);
     toggle = true;
     icon = Icon(Icons.pause_circle_filled_outlined);
   }
@@ -842,7 +849,6 @@ class MusicSend extends StatefulWidget {
     toggle = false;
     icon = Icon(Icons.play_circle_fill_outlined);
     currentDuration = Duration.zero;
-    currentPlaying = null;
     range = 0;
   }
 
@@ -859,24 +865,10 @@ class MusicSend extends StatefulWidget {
     d.updateCustomerHistory(customer, this.customer.history);
   }
 
-  void checkExists(Song checkSong) {
-    exists = false;
-    String checkSongPath = checkSong.artist + ' - ' + checkSong.name;
-    String dir = directory.path + "/" + checkSongPath;
-    exists = Directory(dir).existsSync();
-    if (exists) {
-      toPlay = dir + '/' + checkSongPath + '.mp3';
-      //pictureLocation = dir + '/' + checkSong.name + '.jpg';
-    } else {
-      toPlay = checkSong.urlSong;
-      //pictureLocation = checkSong.urlPic;
-    }
-  }
 
   @override
   State<StatefulWidget> createState() {
     back = false;
-    checkExists(this.song);
     return Music(this.customer, song);
   }
 }
@@ -893,10 +885,24 @@ class Music extends State<MusicSend> {
   @override
   void initState() {
     ms = new MusicSend(customer, song);
-    ms.playAudio(song.urlSong);
+    ms.playAudio();
     ms.addHistory(this.song);
     initAudio();
     previousMusic = this;
+    setState(() {
+      if (loopToggle) {
+        loopColor = Colors.blue;
+        shuffleColor = Colors.black;
+      } else {
+        loopColor = Colors.black;
+      }
+      if (shuffleToggle) {
+        shuffleColor = Colors.blue;
+        loopColor = Colors.black;
+      } else {
+        shuffleColor = Colors.black;
+      }
+    });
     super.initState();
   }
 
@@ -922,40 +928,39 @@ class Music extends State<MusicSend> {
             audioState = "Playing";
             moveSong = true;
           }
-            if (event == AudioPlayerState.COMPLETED) {
-              audioState = "Over";
-              if (moveSong) {
-                if (loopToggle)
-                  ms.playAudio(toPlay);
-                else if (shuffleToggle) {
-                  int rand = new Random().nextInt(copyNSong.length - 1);
-                  currentPlaying = copyNSong[rand];
-                  this.song = currentPlaying;
-                  ms = new MusicSend(customer, this.song);
-                  ms.checkExists(this.song);
-                  ms.playAudio(toPlay);
-                  ms.addHistory(this.song);
-                } else {
-                  for (int i = 0; i < copyNSong.length; i++) {
-                    if (copyNSong[i].id == currentPlaying.id) {
-                      if (i != copyNSong.length - 1)
-                        currentPlaying = copyNSong[i + 1];
-                      else
-                        currentPlaying = copyNSong[0];
-                      this.song = currentPlaying;
-                      break;
-                    }
+          if (event == AudioPlayerState.COMPLETED) {
+            audioState = "Over";
+            if (moveSong) {
+              prevPlaying = currentPlaying;
+              if (loopToggle)
+                ms.playAudio();
+              else if (shuffleToggle) {
+                int rand = new Random().nextInt(copyNSong.length - 1);
+                currentPlaying = copyNSong[rand];
+                this.song = currentPlaying;
+                ms = new MusicSend(customer, this.song);
+                ms.playAudio();
+                ms.addHistory(this.song);
+              } else {
+                for (int i = 0; i < copyNSong.length; i++) {
+                  if (copyNSong[i].id == currentPlaying.id) {
+                    if (i != copyNSong.length - 1)
+                      currentPlaying = copyNSong[i + 1];
+                    else
+                      currentPlaying = copyNSong[0];
+                    this.song = currentPlaying;
+                    break;
                   }
-                  ms = new MusicSend(customer, this.song);
-                  ms.checkExists(this.song);
-                  ms.playAudio(toPlay);
-                  ms.addHistory(this.song);
                 }
-                moveSong = false;
+                ms = new MusicSend(customer, this.song);
+                ms.playAudio();
+                ms.addHistory(this.song);
               }
+              moveSong = false;
             }
-            if (event == AudioPlayerState.STOPPED) audioState = "Stopped";
-          });
+          }
+          if (event == AudioPlayerState.STOPPED) audioState = "Stopped";
+        });
       });
     }
   }
@@ -1219,33 +1224,11 @@ class Music extends State<MusicSend> {
                   IconButton(
                     onPressed: () {
                       ms.stopAudio();
-                      if (currentPlaying != null)
-                        for (int i = 0; i < copyNSong.length; i++) {
-                          if (copyNSong[i].id == currentPlaying.id) {
-                            if (i != 0) {
-                              currentPlaying = copyNSong[i - 1];
-                            } else
-                              currentPlaying = copyNSong[copyNSong.length - 1];
-
-                            Navigator.of(context).push(MaterialPageRoute(
-                                builder: (context) =>
-                                    MusicSend(customer, currentPlaying)));
-                            break;
-                          }
-                        }
-                      else
-                        for (int i = 0; i < copyNSong.length; i++) {
-                          if (copyNSong[i].id == this.song.id) {
-                            if (i != 0) {
-                              currentPlaying = copyNSong[i - 1];
-                            } else
-                              currentPlaying = copyNSong[copyNSong.length - 1];
-                            Navigator.of(context).push(MaterialPageRoute(
-                                builder: (context) =>
-                                    MusicSend(customer, currentPlaying)));
-                            break;
-                          }
-                        }
+                      int curIdx;
+                      for(int i=0;i<nSongs.length;i++)
+                        if(nSongs[i] == prevPlaying)
+                          curIdx = i;
+                        Navigator.of(context).push(MaterialPageRoute(builder: (context) => MusicSend(customer, nSongs[curIdx])));
                     },
                     icon: Icon(Icons.fast_rewind),
                     iconSize: 84,
@@ -1256,7 +1239,7 @@ class Music extends State<MusicSend> {
                         if (toggle)
                           ms.pauseAudio();
                         else {
-                          ms.playAudio(toPlay);
+                          ms.playAudio();
                         }
                       });
                     },
@@ -1266,33 +1249,28 @@ class Music extends State<MusicSend> {
                   IconButton(
                     onPressed: () {
                       ms.stopAudio();
-                      if (currentPlaying != null)
-                        for (int i = 0; i < copyNSong.length; i++) {
-                          if (copyNSong[i].id == currentPlaying.id) {
-                            if (i != copyNSong.length - 1) {
-                              currentPlaying = copyNSong[i + 1];
-                            } else
-                              currentPlaying = copyNSong[0];
-                            Navigator.of(context).push(MaterialPageRoute(
-                                builder: (context) =>
-                                    MusicSend(customer, currentPlaying)));
+                      prevPlaying = currentPlaying;
+                      if(loopToggle)
+                        Navigator.of(context).push(MaterialPageRoute(builder: (context) => MusicSend(customer, currentPlaying)));
+                      else if(shuffleToggle && nSongs.length > 1){
+                        int rand;
+                        while(true){
+                          rand = new Random().nextInt(nSongs.length - 1);
+                          if(nSongs[rand] != currentPlaying)
                             break;
-                          }
                         }
-                      else
-                        for (int i = 0; i < copyNSong.length; i++) {
-                          if (copyNSong[i].id == this.song.id) {
-                            if (i != copyNSong.length - 1) {
-                              currentPlaying = copyNSong[i + 1];
-                            } else
-                              currentPlaying = copyNSong[0];
-                            this.deactivate();
-                            Navigator.of(context).push(MaterialPageRoute(
-                                builder: (context) =>
-                                    MusicSend(customer, currentPlaying)));
-                            break;
-                          }
-                        }
+                        Navigator.of(context).push(MaterialPageRoute(builder: (context) => MusicSend(customer, nSongs[rand])));
+                      }
+                      else{
+                        int curIdx;
+                        for(int i=0;i<nSongs.length;i++)
+                          if(nSongs[i] == currentPlaying)
+                            curIdx = i;
+                        if(curIdx + 1 < nSongs.length)
+                          Navigator.of(context).push(MaterialPageRoute(builder: (context) => MusicSend(customer, nSongs[curIdx+1])));
+                        else
+                          Navigator.of(context).push(MaterialPageRoute(builder: (context) => MusicSend(customer, nSongs[0])));
+                      }
                     },
                     icon: Icon(Icons.fast_forward),
                     iconSize: 84,
