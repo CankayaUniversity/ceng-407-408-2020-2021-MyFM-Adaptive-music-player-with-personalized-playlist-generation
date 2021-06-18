@@ -50,16 +50,16 @@ class Register extends StatelessWidget {
                   ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Please enter all fields.")));
                   return;
                 }
-                email.text = email.text.trim();
+                email.text = email.text.trim().toLowerCase();
                 password.text = password.text.trim();
                 String result = await context.read<AuthenticationServices>().signUp(
-                  email: email.text.trim(),
-                  password: password.text.trim(),
+                  email: email.text,
+                  password: password.text,
                 );
                 if(result == "Signed up") {
                   Customer newCustomer = new Customer(
                     name: this.name.text == null ? "" : this.name.text,
-                    email: this.email.text.toLowerCase(),
+                    email: this.email.text,
                     password: this.password.text,
                     playlists: "",
                     history: "",
