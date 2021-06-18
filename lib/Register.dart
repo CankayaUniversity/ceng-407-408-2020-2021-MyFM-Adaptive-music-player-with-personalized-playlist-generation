@@ -59,7 +59,7 @@ class Register extends StatelessWidget {
                 if(result == "Signed up") {
                   Customer newCustomer = new Customer(
                     name: this.name.text == null ? "" : this.name.text,
-                    email: this.email.text,
+                    email: this.email.text.toLowerCase(),
                     password: this.password.text,
                     playlists: "",
                     history: "",

@@ -43,7 +43,7 @@ class Login extends StatelessWidget {
             Container(
               child: ElevatedButton(style: ElevatedButton.styleFrom(primary: color),onPressed: () async {
                 if(email.text != "" && password.text != "") {
-                  email.text = email.text.trim();
+                  email.text = email.text.trim().toLowerCase();
                   password.text = password.text.trim();
                   String result = await context.read<AuthenticationServices>().signIn(
                     email: email.text,
@@ -96,7 +96,7 @@ class AuthenticationWrapper extends StatelessWidget {
             return WelcomeSend(snapshot.data, null);
           }
           else {
-            return CircularProgressIndicator(backgroundColor: color,);
+            return Center(child: CircularProgressIndicator(backgroundColor: color,));
           }
         },
       );
