@@ -292,10 +292,11 @@ class Welcome extends State<WelcomeSend> {
         nSongs = songs;
     }
     else if (page == 4) {
+      individualArtist = individualArtist.trim();
       for (int i = 0; i < songs.length; i++) {
-        List<String> currentArtists =
-        songs[i].artist.trim().split(',');
+        List<String> currentArtists = songs[i].artist.trim().split(',');
         for (int j = 0; j < currentArtists.length; j++) {
+          currentArtists[j] = currentArtists[j].trim();
           if (currentArtists[j].compareTo(individualArtist) == 0)
             nSongs.add(songs[i]);
         }
