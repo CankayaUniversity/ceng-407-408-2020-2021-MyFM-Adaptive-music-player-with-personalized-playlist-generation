@@ -7,14 +7,12 @@ import 'package:provider/provider.dart';
 import 'AuthenticationServices.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 final Dbs d = new Dbs();
-//final globalScaffoldKey = GlobalKey<ScaffoldState>();
 class Login extends StatelessWidget {
   final email = TextEditingController();
   final password = TextEditingController();
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      //key: globalScaffoldKey,
       appBar: AppBar(
         backgroundColor: color,
         title: Text("Login"),

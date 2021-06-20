@@ -142,7 +142,6 @@ class WelcomeSend extends StatefulWidget {
   WelcomeSend(this.customer, this.song);
   @override
   State<StatefulWidget> createState() {
-    //checkConnection();
     playLists = this.customer.playlists.split('*');
     if (playListChange) {
       for (int i = 1; i < playLists.length; i++) {
@@ -531,7 +530,6 @@ class Welcome extends State<WelcomeSend> {
           opacity: 0.6,
           child: Container(
             width: MediaQuery.of(context).size.width - 200,
-            // height: 75,
             child: FloatingActionButton(
               backgroundColor: color,
               isExtended: true,
@@ -816,8 +814,6 @@ class Account extends State<AccountSend> {
         ));
   }
 }
-
-//List<YT_API> ytResult;
 bool exists;
 int length;
 bool toggle = false;
@@ -936,7 +932,7 @@ class Music extends State<MusicSend> {
               if (loopToggle)
                 ms.playAudio();
               else if (shuffleToggle) {
-                int rand = new Random().nextInt(copyNSong.length - 1);
+                int rand = new Random().nextInt(copyNSong.length);
                 currentPlaying = copyNSong[rand];
                 this.song = currentPlaying;
                 ms = new MusicSend(customer, this.song);
@@ -1009,8 +1005,7 @@ class Music extends State<MusicSend> {
         }
     } else
       this.customer.liked = "";
-    List<String> artists =
-    this.song.artist.trim().split(','); //split(this.song.artist, ',');
+    List<String> artists = this.song.artist.trim().split(',');
     return WillPopScope(
       onWillPop: () async {
         back = true;
@@ -1256,7 +1251,7 @@ class Music extends State<MusicSend> {
                       else if(shuffleToggle && nSongs.length > 1){
                         int rand;
                         while(true){
-                          rand = new Random().nextInt(nSongs.length - 1);
+                          rand = new Random().nextInt(nSongs.length);
                           if(nSongs[rand] != currentPlaying)
                             break;
                         }
